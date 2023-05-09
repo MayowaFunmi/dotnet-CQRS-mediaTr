@@ -1,0 +1,47 @@
+using CQRSMediaTr.DTO;
+using Microsoft.AspNetCore.Mvc;
+using SourceAFIS;
+
+namespace CQRSMediaTr.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class FingerprintController : ControllerBase
+    {
+        [HttpPost("authenticate")]
+        public Task<FingerprintTemplateDto> Authenticate(FingerprintImageDto fingerprintImageDto)
+        {
+            var scanner = new FingerprintScanner();
+            var authenticator = new FingerprintAuthenticator();
+
+            var fingerprintImage = new FingerprintImage(fingerprintImageDto.ImageData);
+            //fingerprintImage.AsBitmap = System.Drawing.Bitmap(new MemoryStream(fingerprintImageDto.ImageData));
+            fingerprintImage.AsBitmapSource = System.Windows.Media.Imaging.BitmapSource.Create(
+                width: fingerprintImage.Width,
+                height: fingerprintImage.Height,
+                dpiX: 96,
+                dpiY: 96,
+                pixelFormat: System.Windows.Media.PixelFormats.Gray8,
+                palette: null,
+                pixels: fingerprintImage.ImageData,
+                stride: fingerprintImage.Width);
+
+
+            var template = authenticator.CreateTemplate(fingerprintImage);
+            return new FingerprintTemplateDto
+            {
+                TemplateData = template.Serailized
+            };
+        }
+
+        [HttpPost("verify")]
+         public Task<bool> Verify(FingerprintTemplateDto template1Dto, FingerprintTemplateDto template2Dto)
+        {
+            var authenticator = new FingerprintAuthenticator();
+
+            var template1 = new FingerprintTemplate(new Template(template1Dto.TemplateData));
+            var template2 = new FingerprintTemplate(new Template(template2Dto.TemplateData));
+            return authenticator.Verify(template1, template2);
+        }
+    }
+}
